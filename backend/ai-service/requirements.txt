@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+rembg
+onnxruntime
+opencv-python
+numpy
+Pillow
+python-multipart

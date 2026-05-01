@@ -1,0 +1,6 @@
+{
+  "watch": ["src"],
+  "ext": "ts,json",
+  "exec": "npx cross-port-killer 5002 && ts-node src/index.ts",
+  "ignore": ["node_modules", "dist"]
+}
