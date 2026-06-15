@@ -3,9 +3,7 @@
 import { useState, useRef } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import axios from 'axios';
-
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
+import { removeBackgroundClientSide } from '@/lib/backgroundRemoval';
 
 export default function SimplePassportMaker() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,48 +34,43 @@ export default function SimplePassportMaker() {
     setError(null);
     
     try {
-      setProcessingStep('🚀 Removing background with local AI (rembg)...');
-      
-      // Convert data URL to blob
+      setProcessingStep('🚀 Removing background...');
       const blob = await fetch(image).then((r) => r.blob());
-      
-      // Create form data for the local FastAPI service
-      const formData = new FormData();
-      formData.append('file', blob, 'photo.jpg');
-      formData.append('bg_color', '#3AA0F5'); // Blue background
+      const noBgBlob = await removeBackgroundClientSide(blob);
 
-      // Call local FastAPI AI service (port 8000) — 100% FREE, no API key
-      const response = await axios.post(`${AI_SERVICE_URL}/api/ai/remove-background`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        responseType: 'blob',
-        timeout: 120000, // 2 minute timeout for AI processing
-      });
+      setProcessingStep('🎨 Adding blue background & resizing...');
 
-      setProcessingStep('✅ Done! Compositing blue background...');
+      // Load the no-bg image into canvas
+      const img = new Image();
+      img.src = URL.createObjectURL(noBgBlob);
+      await new Promise((resolve) => { img.onload = resolve; });
 
-      // Convert blob response to data URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProcessedImage(reader.result as string);
-        setProcessingStep('✅ Passport photo ready!');
-        setLoading(false);
-      };
-      reader.readAsDataURL(response.data);
+      // Create 600x600 canvas with blue background
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d')!;
 
+      // Fill blue background
+      ctx.fillStyle = '#3AA0F5';
+      ctx.fillRect(0, 0, 600, 600);
+
+      // Center the photo (fit within 500x500 area)
+      const maxW = 500, maxH = 500;
+      const scale = Math.min(maxW / img.width, maxH / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const x = (600 - w) / 2;
+      const y = (600 - h) / 2;
+      ctx.drawImage(img, x, y, w, h);
+
+      URL.revokeObjectURL(img.src);
+      setProcessedImage(canvas.toDataURL('image/jpeg', 0.95));
+      setProcessingStep('✅ Passport photo ready!');
+      setLoading(false);
     } catch (err: any) {
-      console.error('Processing error:', err);
-      
-      // Friendly error messages
-      let message = 'Failed to process image. Please try again.';
-      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-        message = '❌ Cannot connect to AI service. Make sure the Python AI service is running:\n\ncd backend/ai-service\npython -m uvicorn app:app --reload --port 8000';
-      } else if (err.response?.data) {
-        message = err.response.data.detail || err.message;
-      } else if (err.message) {
-        message = err.message;
-      }
-
-      setError(message);
+      console.warn('Processing error:', err);
+      setError('Failed to process image. Please try again.');
       setProcessingStep('');
       setLoading(false);
     }
@@ -115,7 +108,7 @@ export default function SimplePassportMaker() {
             Passport-Size-Image-Maker
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Upload any image (JPG/JPEG) with any background - we'll automatically remove it and add a blue background for your perfect passport photo!
+            Upload any image with any background - we'll automatically remove it and add a blue background for your perfect passport photo!
           </p>
           <div className="mt-4 inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-full">
             <span className="text-blue-600 dark:text-blue-400 font-semibold">⚡ Fast & Simple</span>
@@ -142,7 +135,7 @@ export default function SimplePassportMaker() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/jpg"
+                  accept="image/*"
                   onChange={handleImageUpload}
                   className="hidden"
                 />
@@ -165,7 +158,7 @@ export default function SimplePassportMaker() {
                       Click to Upload Photo
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      JPG or JPEG only (not PNG)
+                      PNG, JPG, JPEG — any format works
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                       Any background will be removed automatically
@@ -174,16 +167,16 @@ export default function SimplePassportMaker() {
                 )}
               </div>
 
-              {/* Free AI Service Badge */}
+              {/* Client-Side Processing Badge */}
               <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">🤖</span>
+                  <span className="text-2xl">⚡</span>
                   <div>
                     <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-                      100% Free Local AI — No API Key Needed!
+                      100% Free — Runs in Your Browser!
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                      Uses rembg AI running on your machine. Make sure the AI service is started.
+                      No backend or AI service needed — everything processes locally.
                     </p>
                   </div>
                 </div>
@@ -294,7 +287,7 @@ export default function SimplePassportMaker() {
                 Fast Processing
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Get your passport photo in just 3-5 seconds with our optimized AI service
+                Get your passport photo in just 3-5 seconds with client-side processing
               </p>
             </div>
             
@@ -331,7 +324,7 @@ export default function SimplePassportMaker() {
                 </div>
                 <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Upload</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Upload any JPG/JPEG image (not PNG)
+                  Upload any image (PNG, JPG, JPEG)
                 </p>
               </div>
               
@@ -367,46 +360,6 @@ export default function SimplePassportMaker() {
             </div>
           </div>
 
-          {/* How to Start AI Service */}
-          <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold mb-3 text-blue-800 dark:text-blue-300">
-              🚀 How to Start the AI Service (First Time)
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <span className="text-blue-600 dark:text-blue-400 font-bold">1.</span>
-                <p className="text-sm text-blue-700 dark:text-blue-400">
-                  Open a new terminal/command prompt
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-blue-600 dark:text-blue-400 font-bold">2.</span>
-                <div>
-                  <p className="text-sm text-blue-700 dark:text-blue-400 mb-1">Navigate to the AI service folder:</p>
-                  <code className="block bg-white dark:bg-gray-800 text-blue-900 dark:text-blue-200 px-3 py-2 rounded text-xs font-mono">
-                    cd backend/ai-service
-                  </code>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-blue-600 dark:text-blue-400 font-bold">3.</span>
-                <div>
-                  <p className="text-sm text-blue-700 dark:text-blue-400 mb-1">Start the service:</p>
-                  <code className="block bg-white dark:bg-gray-800 text-blue-900 dark:text-blue-200 px-3 py-2 rounded text-xs font-mono">
-                    python -m uvicorn app:app --reload --port 8000
-                  </code>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
-              <p className="text-xs text-blue-600 dark:text-blue-400">
-                🎁 <strong>100% Free:</strong> Uses rembg AI locally — unlimited usage, no accounts needed
-              </p>
-              <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                💡 <strong>Tip:</strong> First run may take a minute to download the AI model (~170 MB)
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 

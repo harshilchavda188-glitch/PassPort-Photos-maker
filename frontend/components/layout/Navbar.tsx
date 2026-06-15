@@ -74,6 +74,7 @@ export default function Navbar() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
+          style={{ willChange: 'transform, opacity' }}
           className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800"
         >
           <div className="px-4 pt-2 pb-4 space-y-2">

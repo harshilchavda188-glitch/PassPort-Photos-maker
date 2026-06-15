@@ -54,6 +54,7 @@ export default function FAQSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center mb-16"
+          style={{ willChange: 'transform, opacity' }}
         >
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Frequently Asked Questions
@@ -72,6 +73,7 @@ export default function FAQSection() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
               className="card"
+              style={{ willChange: 'transform, opacity' }}
             >
               <button
                 onClick={() => toggleFAQ(index)}

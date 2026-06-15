@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Button from '@/components/ui/Button';
-import { removeBackgroundClientSide, removeBlurAndSharpen } from '@/lib/backgroundRemoval';
+import { removeBackgroundClientSide } from '@/lib/backgroundRemoval';
 import { detectFace, loadFaceDetectionModels } from '@/lib/faceDetection';
 import { autoEnhanceImage, enhanceImageWithRealESRGAN } from '@/lib/imageEnhancement';
 import { passportSizes, PassportSize, getDimensions } from '@/lib/passportSizes';
@@ -140,6 +140,8 @@ function applyLocalContrast(data: Uint8ClampedArray, width: number, height: numb
   }
 }
 
+const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
 const FLASK_BG_SERVICE_URL = process.env.NEXT_PUBLIC_FLASK_BG_SERVICE_URL || 'http://localhost:5003';
@@ -149,6 +151,7 @@ function EditorContent() {
   const mode = searchParams.get('mode') || 'passport'; // 'passport' or 'hd'
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blobUrlRef = useRef<string[]>([]);
 
   const [image, setImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
@@ -198,9 +201,13 @@ function EditorContent() {
 
   useEffect(() => {
     loadFaceDetectionModels();
+    return () => {
+      blobUrlRef.current.forEach(url => URL.revokeObjectURL(url));
+      blobUrlRef.current = [];
+    };
   }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -210,7 +217,7 @@ function EditorContent() {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
   const processImage = async () => {
     if (!image) return;
@@ -223,28 +230,12 @@ function EditorContent() {
       // FEATURE 1: BACKGROUND REMOVAL (Enhanced)
       // ==========================================
       if (removeBackground) {
-        setProcessingStep('🎨 Removing background with AI...');
-        try {
-          const blob = await fetch(image).then((r) => r.blob());
-          const formData = new FormData();
-          formData.append('image', blob, 'photo.jpg');
-          formData.append('bg_color', backgroundColor);
-          formData.append('tool', 'local'); // Default to free local tool
-
-          const response = await axios.post(`${API_URL}/api/background-removal/remove`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            responseType: 'blob',
-          });
-
-          const processedBlob = new Blob([response.data], { type: 'image/png' });
-          currentImage = URL.createObjectURL(processedBlob);
-          console.log('✅ Background removal successful');
-        } catch (err) {
-          console.warn('❌ Backend BG removal failed, using client-side fallback:', err);
-          const blob = await fetch(image).then((r) => r.blob());
-          const removedBg = await removeBackgroundClientSide(blob);
-          currentImage = URL.createObjectURL(removedBg);
-        }
+        setProcessingStep('🎨 Removing background...');
+        const blob = await fetch(image).then((r) => r.blob());
+        const removedBg = await removeBackgroundClientSide(blob);
+        URL.revokeObjectURL(currentImage);
+        currentImage = URL.createObjectURL(removedBg);
+        blobUrlRef.current.push(currentImage);
       }
 
       // ==========================================
@@ -252,19 +243,19 @@ function EditorContent() {
       // ==========================================
       setProcessingStep('✨ Enhancing photo quality to HD...');
       
-      // Apply HD upscaling and AI enhancement
       let aiEnhanced = false;
       if (qualityMode === 'hd' || qualityMode === 'ultra') {
         try {
           setProcessingStep(`🚀 AI ${qualityMode.toUpperCase()} Enhancement in progress...`);
           const blob = await fetch(currentImage).then(r => r.blob());
           const enhancedBlob = await enhanceImageWithRealESRGAN(blob, qualityMode);
+          URL.revokeObjectURL(currentImage);
           currentImage = URL.createObjectURL(enhancedBlob);
+          blobUrlRef.current.push(currentImage);
           aiEnhanced = true;
           console.log('✅ Backend AI enhancement successful');
         } catch (error) {
-          console.error('AI Enhancement failed, falling back to client-side:', error);
-          // Fallback to client-side scaling if backend fails
+          console.warn('AI Enhancement unavailable, using client-side scaling');
         }
       }
 
@@ -303,6 +294,8 @@ function EditorContent() {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
       
+      await yieldToUI();
+
       // ==========================================
       // STEP 1: REMOVE BLUR & SHARPEN (Anti-Blur)
       // ==========================================
@@ -347,6 +340,8 @@ function EditorContent() {
       // Apply HD enhancement (brightness, contrast, saturation, sharpening)
       autoEnhanceImage(canvas);
       
+      await yieldToUI();
+
       // ==========================================
       // STEP 3: ADDITIONAL CLARITY BOOST
       // ==========================================
@@ -369,6 +364,8 @@ function EditorContent() {
         console.log('✅ Clarity boost applied');
       }
       
+      await yieldToUI();
+
       // Apply background color if needed
       if (removeBackground && backgroundColor !== 'transparent') {
         setProcessingStep('🎨 Applying background color...');

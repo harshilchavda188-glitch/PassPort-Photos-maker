@@ -51,6 +51,7 @@ export default function FeaturesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center mb-16"
+          style={{ willChange: 'transform, opacity' }}
         >
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Powerful AI Features
@@ -69,6 +70,7 @@ export default function FeaturesSection() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               className="card hover:transform hover:scale-105 transition-all duration-300"
+              style={{ willChange: 'transform, opacity' }}
             >
               <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4`}>
                 <feature.icon className="w-7 h-7 text-white" />

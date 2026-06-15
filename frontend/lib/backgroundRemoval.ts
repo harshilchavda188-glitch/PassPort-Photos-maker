@@ -23,7 +23,7 @@ export const removeBackgroundWithAPI = async (
     formData.append('size', size);
 
     const response = await axios.post(
-      `${API_URL}/api/background-removal/remove`,
+      `${API_URL}/background-removal/remove`,
       formData,
       {
         responseType: 'blob',
@@ -52,7 +52,7 @@ export const removeBackgroundWithAPIBase64 = async (
 ): Promise<string> => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/background-removal/remove-base64`,
+      `${API_URL}/background-removal/remove-base64`,
       {
         image_base64: imageBase64,
         bg_color: backgroundColor,
@@ -73,7 +73,7 @@ export const removeBackgroundWithAPIBase64 = async (
  */
 export const checkRemoveBgStatus = async (): Promise<{ remaining: number; total: number }> => {
   try {
-    const response = await axios.get(`${API_URL}/api/background-removal/status`);
+    const response = await axios.get(`${API_URL}/background-removal/status`);
     return response.data.data;
   } catch (error: any) {
     console.error('Error checking API status:', error);

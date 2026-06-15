@@ -32,20 +32,18 @@ export const detectFace = async (
     let skinCenterX = 0;
     let skinCenterY = 0;
 
-    for (let y = 0; y < canvas.height; y += 4) { // Skip pixels for performance
-      for (let x = 0; x < canvas.width; x += 4) {
+    const stride = 8;
+    for (let y = 0; y < canvas.height; y += stride) {
+      for (let x = 0; x < canvas.width; x += stride) {
         const i = (y * canvas.width + x) * 4;
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
 
-        // Simple skin color detection
         const isSkin = 
-          r > 95 && g > 40 && b > 20 &&
+          r > 80 && g > 40 && b > 20 &&
           r > g && r > b &&
-          (r - g) > 15 &&
-          Math.abs(r - g) > 15 &&
-          r - b > 15;
+          (r - g) > 12;
 
         if (isSkin) {
           skinPixelCount++;

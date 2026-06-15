@@ -33,6 +33,7 @@ export default function HowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center mb-16"
+          style={{ willChange: 'transform, opacity' }}
         >
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             How It Works
@@ -51,6 +52,7 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.2 }}
               className="relative"
+              style={{ willChange: 'transform, opacity' }}
             >
               <div className="card text-center">
                 <div className="text-6xl font-bold text-primary-200 dark:text-primary-900 absolute top-4 right-4">

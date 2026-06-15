@@ -14,6 +14,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
+            style={{ willChange: 'transform, opacity' }}
           >
             <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight mb-6">
               Passport-Size-Image-<span className="bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Maker</span>
@@ -51,6 +52,7 @@ export default function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative"
+            style={{ willChange: 'transform, opacity' }}
           >
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-float">
               <div className="aspect-square bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900 dark:to-secondary-900 rounded-xl flex items-center justify-center">
